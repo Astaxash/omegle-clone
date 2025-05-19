@@ -1,37 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
   <title>Chat with Stranger</title>
-  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="videos">
-    <video id="localVideo" autoplay muted></video>
-    <video id="remoteVideo" autoplay></video>
-  </div>
+  <header>
+    <h1>Chat with Stranger</h1>
+  </header>
 
-  <div class="controls">
-    <button id="muteBtn">Mute</button>
-    <button id="videoBtn">Video Off</button>
-    <button id="screenBtn">Share Screen</button>
-  </div>
+  <main>
+    <div class="video-container">
+      <video id="myVideo" autoplay muted></video>
+      <video id="partnerVideo" autoplay></video>
+    </div>
 
-  <div class="chat-box">
-    <div id="messages"></div>
-    <input type="text" id="messageInput" placeholder="Type a message..."/>
-    <button id="sendBtn">Send</button>
-  </div>
+    <div class="controls">
+      <button id="muteBtn">Mute</button>
+      <button id="videoBtn">Video Off</button>
+      <button id="shareScreenBtn">Share Screen</button>
+    </div>
+
+    <div class="chat-container">
+      <div id="messages"></div>
+      <input type="text" id="chatInput" placeholder="Type a message..." />
+      <button id="sendBtn">Send</button>
+    </div>
+  </main>
 
   <footer>
-    &copy; 2025 chat with stranger - All rights reserved.
+    <p>© 2025 Chat with Stranger - All rights reserved.</p>
   </footer>
 
-  <audio id="notify" src="https://notificationsounds.com/storage/sounds/file-sounds-1156-pristine.mp3" preload="auto"></audio>
-
+  <audio id="notificationSound" src="https://notificationsounds.com/storage/sounds/file-sounds-1150-pristine.mp3" preload="auto"></audio>
   <script src="/socket.io/socket.io.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/simple-peer@9/simplepeer.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.1/simplepeer.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

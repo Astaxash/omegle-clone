@@ -1,67 +1,86 @@
 const socket = io("https://stranger-chat-gv7k.onrender.com");
-let localStream;
 let peer;
-const video = document.getElementById('localVideo');
-const remote = document.getElementById('remoteVideo');
+let localStream;
+let isMuted = false;
+let isVideoOn = true;
+
+const myVideo = document.getElementById('myVideo');
+const partnerVideo = document.getElementById('partnerVideo');
 const muteBtn = document.getElementById('muteBtn');
 const videoBtn = document.getElementById('videoBtn');
-const screenBtn = document.getElementById('screenBtn');
+const shareScreenBtn = document.getElementById('shareScreenBtn');
+const chatInput = document.getElementById('chatInput');
 const sendBtn = document.getElementById('sendBtn');
-const messageInput = document.getElementById('messageInput');
 const messages = document.getElementById('messages');
-const notify = document.getElementById('notify');
+const notificationSound = document.getElementById('notificationSound');
 
 navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
   localStream = stream;
-  video.srcObject = stream;
-  socket.emit('ready');
-});
+  myVideo.srcObject = stream;
 
-socket.on('partner-found', () => {
-  peer = new SimplePeer({
-    initiator: true,
-    trickle: false,
-    stream: localStream
+  socket.emit("ready");
+
+  socket.on("offer", (data) => {
+    peer = new SimplePeer({ initiator: false, trickle: false, stream: localStream });
+    peer.signal(data);
+    peer.on("signal", signal => socket.emit("answer", signal));
+    peer.on("stream", stream => partnerVideo.srcObject = stream);
   });
 
-  peer.on('signal', data => socket.emit('signal', data));
-  peer.on('stream', stream => remote.srcObject = stream);
-  peer.on('data', data => {
-    const msg = new TextDecoder().decode(data);
-    notify.play();
-    messages.innerHTML += `<div><b>Stranger:</b> ${msg}</div>`;
+  socket.on("answer", signal => peer.signal(signal));
+
+  socket.on("ready", () => {
+    peer = new SimplePeer({ initiator: true, trickle: false, stream: localStream });
+    peer.on("signal", signal => socket.emit("offer", signal));
+    peer.on("stream", stream => partnerVideo.srcObject = stream);
   });
 
-  socket.on('signal', data => peer.signal(data));
-});
-
-socket.on('partner-left', () => {
-  messages.innerHTML += "<div><i>Stranger left the chat.</i></div>";
-  remote.srcObject = null;
-});
-
-sendBtn.onclick = () => {
-  const msg = messageInput.value;
-  if (msg && peer) {
-    peer.send(msg);
-    messages.innerHTML += `<div><b>You:</b> ${msg}</div>`;
-    messageInput.value = '';
-  }
-};
+}).catch(err => alert("Camera/Mic access denied!"));
 
 muteBtn.onclick = () => {
-  localStream.getAudioTracks()[0].enabled = !localStream.getAudioTracks()[0].enabled;
-  muteBtn.textContent = localStream.getAudioTracks()[0].enabled ? 'Mute' : 'Unmute';
+  isMuted = !isMuted;
+  localStream.getAudioTracks()[0].enabled = !isMuted;
+  muteBtn.textContent = isMuted ? "Unmute" : "Mute";
 };
 
 videoBtn.onclick = () => {
-  localStream.getVideoTracks()[0].enabled = !localStream.getVideoTracks()[0].enabled;
-  videoBtn.textContent = localStream.getVideoTracks()[0].enabled ? 'Video Off' : 'Video On';
+  isVideoOn = !isVideoOn;
+  localStream.getVideoTracks()[0].enabled = isVideoOn;
+  videoBtn.textContent = isVideoOn ? "Video Off" : "Video On";
 };
 
-screenBtn.onclick = async () => {
-  const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-  peer.replaceTrack(localStream.getVideoTracks()[0], screenStream.getVideoTracks()[0], localStream);
-  localStream = screenStream;
-  video.srcObject = screenStream;
+shareScreenBtn.onclick = async () => {
+  try {
+    const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+    const videoTrack = screenStream.getVideoTracks()[0];
+    const sender = peer.streams[0].getVideoTracks()[0];
+    peer.replaceTrack(sender, videoTrack, localStream);
+
+    videoTrack.onended = () => {
+      peer.replaceTrack(videoTrack, sender, localStream);
+    };
+  } catch (err) {
+    alert("Failed to share screen.");
+  }
 };
+
+sendBtn.onclick = () => {
+  const message = chatInput.value.trim();
+  if (!message) return;
+
+  socket.emit("chat", message);
+  appendMessage("You", message);
+  chatInput.value = "";
+};
+
+socket.on("chat", msg => {
+  notificationSound.play();
+  appendMessage("Stranger", msg);
+});
+
+function appendMessage(sender, msg) {
+  const p = document.createElement("p");
+  p.innerHTML = `<strong>${sender}:</strong> ${msg}`;
+  messages.appendChild(p);
+  messages.scrollTop = messages.scrollHeight;
+}

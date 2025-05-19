@@ -1,39 +1,43 @@
-const express = require('express');
+const express = require("express");
 const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
-const PORT = process.env.PORT || 3000;
+const http = require("http").Server(app);
+const io = require("socket.io")(http);
 
-app.use(express.static('public'));
+app.use(express.static(__dirname));
 
-let waitingUser = null;
+let waitingSocket = null;
 
-io.on('connection', socket => {
-  if (waitingUser) {
-    socket.partner = waitingUser;
-    waitingUser.partner = socket;
-    waitingUser.emit('partner-found');
-    socket.emit('partner-found');
-    waitingUser = null;
+io.on("connection", socket => {
+  if (waitingSocket) {
+    socket.partner = waitingSocket;
+    waitingSocket.partner = socket;
+
+    waitingSocket.emit("ready");
+    socket.emit("ready");
+
+    waitingSocket = null;
   } else {
-    waitingUser = socket;
+    waitingSocket = socket;
   }
 
-  socket.on('signal', data => {
-    if (socket.partner) socket.partner.emit('signal', data);
+  socket.on("offer", data => {
+    if (socket.partner) socket.partner.emit("offer", data);
   });
 
-  socket.on('message', msg => {
-    if (socket.partner) socket.partner.emit('message', msg);
+  socket.on("answer", data => {
+    if (socket.partner) socket.partner.emit("answer", data);
   });
 
-  socket.on('disconnect', () => {
-    if (socket.partner) {
-      socket.partner.emit('partner-left');
-      socket.partner.partner = null;
-    }
-    if (waitingUser === socket) waitingUser = null;
+  socket.on("chat", msg => {
+    if (socket.partner) socket.partner.emit("chat", msg);
+  });
+
+  socket.on("disconnect", () => {
+    if (socket.partner) socket.partner.partner = null;
+    if (waitingSocket === socket) waitingSocket = null;
   });
 });
 
-http.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+http.listen(3000, () => {
+  console.log("Server running on http://localhost:3000");
+});
