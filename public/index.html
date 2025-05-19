@@ -9,20 +9,18 @@
 <body>
   <header><h1>Chat With Stranger</h1></header>
   <main>
-    <div class="videos">
-      <video id="localVideo" autoplay muted></video>
-      <video id="remoteVideo" autoplay></video>
-    </div>
-    <div class="controls">
-      <button id="muteBtn">Mute</button>
-      <button id="videoBtn">Video Off</button>
-      <button id="screenBtn">Share Screen</button>
-      <button id="disconnectBtn">Disconnect</button>
-    </div>
-    <div class="chat">
-      <div id="chatBox"></div>
-      <input type="text" id="messageInput" placeholder="Type a message...">
-      <button id="sendBtn">Send</button>
+    <video id="localVideo" autoplay muted></video>
+<video id="remoteVideo" autoplay></video>
+
+<div class="controls">
+  <button id="toggleMic">Mute</button>
+  <button id="toggleVideo">Video Off</button>
+  <button id="shareScreen">Share Screen</button>
+</div>
+
+<div id="chatBox"></div>
+<input type="text" id="chatInput" placeholder="Type a message...">
+<button id="sendBtn">Send</button>
     </div>
   </main>
   <footer>&copy; 2025 chat with stranger - All rights reserved.</footer>
