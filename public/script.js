@@ -1,4 +1,4 @@
-const socket = io();
+const socket = io("https://stranger-chat-gv7k.onrender.com");
 let peer;
 let localStream;
 
@@ -72,4 +72,23 @@ socket.on("partner-left", () => {
 socket.on("reported", () => {
   alert("You've been reported and disconnected.");
   location.reload();
+});
+
+let micEnabled = true;
+let videoEnabled = true;
+
+document.getElementById("toggle-mic").addEventListener("click", () => {
+  if (!localStream) return;
+
+  micEnabled = !micEnabled;
+  localStream.getAudioTracks()[0].enabled = micEnabled;
+  document.getElementById("toggle-mic").textContent = micEnabled ? "🎤 Mute Mic" : "🔇 Unmute Mic";
+});
+
+document.getElementById("toggle-video").addEventListener("click", () => {
+  if (!localStream) return;
+
+  videoEnabled = !videoEnabled;
+  localStream.getVideoTracks()[0].enabled = videoEnabled;
+  document.getElementById("toggle-video").textContent = videoEnabled ? "🎥 Turn Off Video" : "📷 Turn On Video";
 });
