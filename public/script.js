@@ -1,127 +1,57 @@
-const socket = io("https://stranger-chat-gv7k.onrender.com");
-let peer;
-let localStream;
-
-const chatBox = document.getElementById("chat");
-const msgInput = document.getElementById("messageInput");
-const sendBtn = document.getElementById("sendBtn");
-const disconnectBtn = document.getElementById("disconnectBtn");
-const reportBtn = document.getElementById("reportBtn");
-
+const socket = io();
 const localVideo = document.getElementById("localVideo");
 const remoteVideo = document.getElementById("remoteVideo");
-const statusText = document.getElementById("status");
+const muteBtn = document.getElementById("muteBtn");
+const videoBtn = document.getElementById("videoBtn");
+const screenBtn = document.getElementById("screenBtn");
 
-sendBtn.onclick = () => {
-  const msg = msgInput.value.trim();
-  if (msg) {
-    chatBox.innerHTML += `<p><b>You:</b> ${msg}</p>`;
-    socket.emit("message", msg);
-    msgInput.value = "";
-  }
-};
+let localStream, peer;
+let isAudio = true, isVideo = true;
 
-disconnectBtn.onclick = () => {
-  socket.emit("disconnect-chat");
-  location.reload();
-};
+navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+  localVideo.srcObject = stream;
+  localStream = stream;
 
-reportBtn.onclick = () => {
-  socket.emit("report");
-  alert("User has been reported.");
-};
+  socket.emit("join");
 
-socket.on("waiting", () => {
-  statusText.textContent = "Waiting for a partner...";
+  socket.on("initiate", () => startPeer(true));
+  socket.on("signal", data => peer.signal(data));
+  socket.on("disconnectPeer", () => peer.destroy());
 });
 
-socket.on("partner-found", async () => {
-  statusText.textContent = "Partner found! Start chatting.";
-
-  localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-  localVideo.srcObject = localStream;
-
- peer = new SimplePeer({
-  initiator: location.hash === "#1",
-  trickle: false,
-  stream: localStream,
-  config: {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' }
-    ]
-  }
-});
-
-
-  peer.on("signal", data => {
-    socket.emit("signal", data);
+function startPeer(initiator) {
+  peer = new SimplePeer({
+    initiator,
+    trickle: false,
+    stream: localStream,
+    config: {
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+    }
   });
+
+  peer.on("signal", data => socket.emit("signal", data));
 
   peer.on("stream", stream => {
     remoteVideo.srcObject = stream;
   });
 
-  socket.on("signal", data => {
-    peer.signal(data);
-  });
-});
+  peer.on("close", () => remoteVideo.srcObject = null);
+}
 
-peer.on("stream", (stream) => {
-  console.log("📺 Received partner's stream");
-  remoteVideo.srcObject = stream;
-  remoteVideo.play();
-});
+muteBtn.onclick = () => {
+  isAudio = !isAudio;
+  localStream.getAudioTracks()[0].enabled = isAudio;
+  muteBtn.textContent = isAudio ? "Mute" : "Unmute";
+};
 
+videoBtn.onclick = () => {
+  isVideo = !isVideo;
+  localStream.getVideoTracks()[0].enabled = isVideo;
+  videoBtn.textContent = isVideo ? "Video Off" : "Video On";
+};
 
-socket.on("message", msg => {
-  chatBox.innerHTML += `<p><b>Stranger:</b> ${msg}</p>`;
-});
-
-socket.on("partner-left", () => {
-  alert("Partner left the chat.");
-  location.reload();
-});
-
-socket.on("reported", () => {
-  alert("You've been reported and disconnected.");
-  location.reload();
-});
-
-let micEnabled = true;
-let videoEnabled = true;
-
-document.getElementById("toggle-mic").addEventListener("click", () => {
-  if (!localStream) return;
-
-  micEnabled = !micEnabled;
-  localStream.getAudioTracks()[0].enabled = micEnabled;
-  document.getElementById("toggle-mic").textContent = micEnabled ? "🎤 Mute Mic" : "🔇 Unmute Mic";
-});
-
-document.getElementById("toggle-video").addEventListener("click", () => {
-  if (!localStream) return;
-
-  videoEnabled = !videoEnabled;
-  localStream.getVideoTracks()[0].enabled = videoEnabled;
-  document.getElementById("toggle-video").textContent = videoEnabled ? "🎥 Turn Off Video" : "📷 Turn On Video";
-});
-
-peer.on("signal", (data) => {
-  console.log("📡 Sending signal to partner", data);
-  socket.emit("signal", data);
-});
-
-socket.on("signal", (data) => {
-  console.log("📶 Received signal from partner", data);
-  peer.signal(data);
-});
-
-peer.on("stream", (stream) => {
-  console.log("📺 Received partner's video stream");
-  remoteVideo.srcObject = stream;
-  remoteVideo.play();
-});
-
-peer.on("error", (err) => {
-  console.error("❌ Peer connection error:", err);
-});
+screenBtn.onclick = async () => {
+  const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+  const sender = peer._pc.getSenders().find(s => s.track.kind === "video");
+  sender.replaceTrack(screenStream.getVideoTracks()[0]);
+};
