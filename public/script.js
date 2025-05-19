@@ -42,10 +42,15 @@ socket.on("partner-found", async () => {
   localVideo.srcObject = localStream;
 
   peer = new SimplePeer({
-    initiator: location.hash === "#1",
-    trickle: false,
-    stream: localStream
-  });
+  initiator: location.hash === "#1",
+  trickle: false,
+  stream: localStream,
+  config: {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' }
+    ]
+  }
+});
 
   peer.on("signal", data => {
     socket.emit("signal", data);
@@ -91,4 +96,24 @@ document.getElementById("toggle-video").addEventListener("click", () => {
   videoEnabled = !videoEnabled;
   localStream.getVideoTracks()[0].enabled = videoEnabled;
   document.getElementById("toggle-video").textContent = videoEnabled ? "🎥 Turn Off Video" : "📷 Turn On Video";
+});
+
+peer.on("signal", (data) => {
+  console.log("📡 Sending signal to partner", data);
+  socket.emit("signal", data);
+});
+
+socket.on("signal", (data) => {
+  console.log("📶 Received signal from partner", data);
+  peer.signal(data);
+});
+
+peer.on("stream", (stream) => {
+  console.log("📺 Received partner's video stream");
+  remoteVideo.srcObject = stream;
+  remoteVideo.play();
+});
+
+peer.on("error", (err) => {
+  console.error("❌ Peer connection error:", err);
 });
