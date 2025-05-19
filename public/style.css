@@ -1,0 +1,54 @@
+body {
+  background-color: #000;
+  color: #39ff14;
+  font-family: 'Courier New', monospace;
+  text-align: center;
+  padding: 20px;
+}
+
+h1 {
+  font-size: 2em;
+  text-shadow: 0 0 8px #39ff14;
+}
+
+#chat {
+  border: 1px solid #39ff14;
+  height: 200px;
+  margin: 10px auto;
+  overflow-y: auto;
+  padding: 10px;
+  width: 80%;
+}
+
+input, button {
+  padding: 10px;
+  margin: 5px;
+  background: #111;
+  border: 1px solid #39ff14;
+  color: #39ff14;
+  transition: 0.2s ease-in-out;
+}
+
+button:hover {
+  background: #39ff14;
+  color: #000;
+  cursor: pointer;
+  box-shadow: 0 0 10px #39ff14, 0 0 20px #39ff14;
+}
+
+.controls {
+  margin-top: 10px;
+}
+
+#video-container {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin: 15px;
+}
+
+video {
+  width: 240px;
+  border: 2px solid #39ff14;
+  box-shadow: 0 0 10px #39ff14;
+}

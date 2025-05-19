@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Neon Chat</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>Chat with the stranger
+  </h1>
+  <div id="status">Connecting to a stranger...</div>
+
+  <div id="video-container">
+    <video id="remoteVideo" autoplay playsinline></video>
+    <video id="localVideo" autoplay playsinline muted></video>
+  </div>
+
+  <div id="chat"></div>
+
+  <div class="controls">
+    <input id="messageInput" placeholder="Type your message..." />
+    <button id="sendBtn">Send</button>
+    <button id="disconnectBtn">Disconnect</button>
+    <button id="reportBtn">Report</button>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/simple-peer/simplepeer.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
