@@ -3,32 +3,35 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Chat With Stranger</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>Chat with Stranger</title>
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-  <header><h1>Chat With Stranger</h1></header>
-  <main>
+  <div class="videos">
     <video id="localVideo" autoplay muted></video>
-<video id="remoteVideo" autoplay></video>
+    <video id="remoteVideo" autoplay></video>
+  </div>
 
-<div class="controls">
-  <button id="toggleMic">Mute</button>
-  <button id="toggleVideo">Video Off</button>
-  <button id="shareScreen">Share Screen</button>
-</div>
+  <div class="controls">
+    <button id="muteBtn">Mute</button>
+    <button id="videoBtn">Video Off</button>
+    <button id="screenBtn">Share Screen</button>
+  </div>
 
-<div id="chatBox"></div>
-<input type="text" id="chatInput" placeholder="Type a message...">
-<button id="sendBtn">Send</button>
-    </div>
-  </main>
-  <footer>&copy; 2025 chat with stranger - All rights reserved.</footer>
+  <div class="chat-box">
+    <div id="messages"></div>
+    <input type="text" id="messageInput" placeholder="Type a message..."/>
+    <button id="sendBtn">Send</button>
+  </div>
 
-  <audio id="notifySound" src="notification.mp3" preload="auto"></audio>
+  <footer>
+    &copy; 2025 chat with stranger - All rights reserved.
+  </footer>
+
+  <audio id="notify" src="https://notificationsounds.com/storage/sounds/file-sounds-1156-pristine.mp3" preload="auto"></audio>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.1/simplepeer.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/simple-peer@9/simplepeer.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
