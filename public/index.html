@@ -3,24 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>chat with stranger</title>
+  <title>Chat With Stranger</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="video-container">
-    <video id="localVideo" autoplay muted></video>
-    <video id="remoteVideo" autoplay></video>
-  </div>
-  <div class="controls">
-    <button id="muteBtn">Mute</button>
-    <button id="videoBtn">Video Off</button>
-    <button id="screenBtn">Share Screen</button>
-  </div>
-  <footer class="footer">
-    <p>© 2025 chat with stranger - All rights reserved.</p>
-  </footer>
+  <header><h1>Chat With Stranger</h1></header>
+  <main>
+    <div class="videos">
+      <video id="localVideo" autoplay muted></video>
+      <video id="remoteVideo" autoplay></video>
+    </div>
+    <div class="controls">
+      <button id="muteBtn">Mute</button>
+      <button id="videoBtn">Video Off</button>
+      <button id="screenBtn">Share Screen</button>
+      <button id="disconnectBtn">Disconnect</button>
+    </div>
+    <div class="chat">
+      <div id="chatBox"></div>
+      <input type="text" id="messageInput" placeholder="Type a message...">
+      <button id="sendBtn">Send</button>
+    </div>
+  </main>
+  <footer>&copy; 2025 chat with stranger - All rights reserved.</footer>
+
+  <audio id="notifySound" src="notification.mp3" preload="auto"></audio>
+
   <script src="/socket.io/socket.io.js"></script>
-  <script src="https://unpkg.com/simple-peer@9.11.1/simplepeer.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.1/simplepeer.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

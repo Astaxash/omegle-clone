@@ -1,30 +1,50 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
+const path = require("path");
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(express.static("public"));
+const users = [];
 
-let waiting = null;
+app.use(express.static(path.join(__dirname, "public")));
 
-io.on("connection", socket => {
-  if (waiting) {
-    const partner = waiting;
-    waiting = null;
-    socket.emit("initiate");
-    partner.emit("initiate");
+io.on("connection", (socket) => {
+  let paired = false;
+  for (let u of users) {
+    if (!u.paired) {
+      u.paired = true;
+      socket.paired = true;
+      socket.partner = u.socket;
+      u.socket.partner = socket;
 
-    socket.on("signal", data => partner.emit("signal", data));
-    partner.on("signal", data => socket.emit("signal", data));
-
-    socket.on("disconnect", () => partner.emit("disconnectPeer"));
-    partner.on("disconnect", () => socket.emit("disconnectPeer"));
-  } else {
-    waiting = socket;
+      socket.emit("partner-found");
+      u.socket.emit("partner-found");
+      paired = true;
+      break;
+    }
   }
+
+  if (!paired) users.push({ socket, paired: false });
+
+  socket.on("signal", (data) => {
+    if (socket.partner) socket.partner.emit("signal", data);
+  });
+
+  socket.on("message", (msg) => {
+    if (socket.partner) socket.partner.emit("message", msg);
+  });
+
+  socket.on("disconnect", () => {
+    const index = users.findIndex(u => u.socket === socket);
+    if (index !== -1) users.splice(index, 1);
+    if (socket.partner) {
+      socket.partner.emit("partner-left");
+      socket.partner.partner = null;
+    }
+  });
 });
 
 server.listen(3000, () => console.log("Server running on http://localhost:3000"));

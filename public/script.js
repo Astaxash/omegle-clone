@@ -1,57 +1,60 @@
 const socket = io();
-const localVideo = document.getElementById("localVideo");
-const remoteVideo = document.getElementById("remoteVideo");
-const muteBtn = document.getElementById("muteBtn");
-const videoBtn = document.getElementById("videoBtn");
-const screenBtn = document.getElementById("screenBtn");
+let localStream, peer, isAudio = true, isVideo = true;
 
-let localStream, peer;
-let isAudio = true, isVideo = true;
+navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+  .then(stream => {
+    localStream = stream;
+    document.getElementById("localVideo").srcObject = stream;
+    socket.emit("ready");
+  });
 
-navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-  localVideo.srcObject = stream;
-  localStream = stream;
-
-  socket.emit("join");
-
-  socket.on("initiate", () => startPeer(true));
-  socket.on("signal", data => peer.signal(data));
-  socket.on("disconnectPeer", () => peer.destroy());
+socket.on("partner-found", () => {
+  peer = new SimplePeer({ initiator: true, trickle: false, stream: localStream });
+  peer.on("signal", data => socket.emit("signal", data));
+  peer.on("stream", stream => document.getElementById("remoteVideo").srcObject = stream);
+  peer.on("data", data => {
+    showMessage("Stranger: " + data.toString());
+    document.getElementById("notifySound").play();
+  });
 });
 
-function startPeer(initiator) {
-  peer = new SimplePeer({
-    initiator,
-    trickle: false,
-    stream: localStream,
-    config: {
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-    }
-  });
+socket.on("signal", data => peer.signal(data));
+socket.on("partner-left", () => alert("Partner disconnected"));
 
-  peer.on("signal", data => socket.emit("signal", data));
+document.getElementById("sendBtn").onclick = () => {
+  const msg = document.getElementById("messageInput").value;
+  if (msg) {
+    peer.send(msg);
+    showMessage("You: " + msg);
+    document.getElementById("messageInput").value = "";
+  }
+};
 
-  peer.on("stream", stream => {
-    remoteVideo.srcObject = stream;
-  });
-
-  peer.on("close", () => remoteVideo.srcObject = null);
+function showMessage(msg) {
+  const box = document.getElementById("chatBox");
+  box.innerHTML += `<div>${msg}</div>`;
+  box.scrollTop = box.scrollHeight;
 }
 
-muteBtn.onclick = () => {
+document.getElementById("muteBtn").onclick = () => {
   isAudio = !isAudio;
   localStream.getAudioTracks()[0].enabled = isAudio;
-  muteBtn.textContent = isAudio ? "Mute" : "Unmute";
+  document.getElementById("muteBtn").textContent = isAudio ? "Mute" : "Unmute";
 };
 
-videoBtn.onclick = () => {
+document.getElementById("videoBtn").onclick = () => {
   isVideo = !isVideo;
   localStream.getVideoTracks()[0].enabled = isVideo;
-  videoBtn.textContent = isVideo ? "Video Off" : "Video On";
+  document.getElementById("videoBtn").textContent = isVideo ? "Video Off" : "Video On";
 };
 
-screenBtn.onclick = async () => {
+document.getElementById("screenBtn").onclick = async () => {
   const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-  const sender = peer._pc.getSenders().find(s => s.track.kind === "video");
-  sender.replaceTrack(screenStream.getVideoTracks()[0]);
+  const videoTrack = screenStream.getVideoTracks()[0];
+  peer.replaceTrack(localStream.getVideoTracks()[0], videoTrack, localStream);
+};
+
+document.getElementById("disconnectBtn").onclick = () => {
+  peer.destroy();
+  location.reload();
 };
