@@ -41,7 +41,7 @@ socket.on("partner-found", async () => {
   localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
   localVideo.srcObject = localStream;
 
-  peer = new SimplePeer({
+ peer = new SimplePeer({
   initiator: location.hash === "#1",
   trickle: false,
   stream: localStream,
@@ -51,6 +51,7 @@ socket.on("partner-found", async () => {
     ]
   }
 });
+
 
   peer.on("signal", data => {
     socket.emit("signal", data);
@@ -64,6 +65,13 @@ socket.on("partner-found", async () => {
     peer.signal(data);
   });
 });
+
+peer.on("stream", (stream) => {
+  console.log("📺 Received partner's stream");
+  remoteVideo.srcObject = stream;
+  remoteVideo.play();
+});
+
 
 socket.on("message", msg => {
   chatBox.innerHTML += `<p><b>Stranger:</b> ${msg}</p>`;
