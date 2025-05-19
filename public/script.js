@@ -1,4 +1,4 @@
-const socket = io();
+const socket = io("https://stranger-chat-gv7k.onrender.com");
 let localStream, peer, isAudio = true, isVideo = true;
 
 navigator.mediaDevices.getUserMedia({ video: true, audio: true })
