@@ -1,4 +1,5 @@
-const socket = io();
+// Replace with your actual Render backend URL
+const socket = io('https://YOUR_BACKEND_URL_HERE');
 
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
@@ -16,11 +17,12 @@ let peer;
 let isMuted = false;
 let videoOff = false;
 
-// Get user media
+// Start media and notify server when ready
 async function startMedia() {
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     localVideo.srcObject = localStream;
+    socket.emit('ready'); // Tell server you're ready to be matched
   } catch (err) {
     alert('Could not get camera/mic permissions');
     console.error(err);
@@ -34,6 +36,9 @@ function createPeer(initiator) {
     initiator,
     trickle: false,
     stream: localStream,
+    config: {
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    },
   });
 
   peer.on('signal', data => {
@@ -54,20 +59,20 @@ function createPeer(initiator) {
   });
 }
 
-// Handle signals from server
-socket.on('signal', ({ data }) => {
-  if (!peer) {
-    createPeer(false);
-  }
-  peer.signal(data);
-});
-
-// Partner found - start connection
+// Partner found
 socket.on('partnerFound', (partnerId) => {
   if (!peer) {
     createPeer(true);
   }
   updateStatus('Partner connected');
+});
+
+// Receive signaling data
+socket.on('signal', ({ data }) => {
+  if (!peer) {
+    createPeer(false);
+  }
+  peer.signal(data);
 });
 
 // Status updates
@@ -82,19 +87,19 @@ socket.on('partnerDisconnected', () => {
     peer = null;
   }
   updateStatus('Partner disconnected. Waiting for a stranger...');
+  remoteVideo.srcObject = null;
 });
 
-// Report acknowledgement
+// Report acknowledgments
 socket.on('reportAcknowledged', () => {
   alert('You reported your partner.');
 });
 
-// Partner reported
 socket.on('reported', () => {
   alert('You have been reported by your partner.');
 });
 
-// Send chat message
+// Chat
 sendBtn.addEventListener('click', sendMessage);
 messageInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendMessage();
@@ -103,18 +108,15 @@ messageInput.addEventListener('keydown', (e) => {
 function sendMessage() {
   const msg = messageInput.value.trim();
   if (!msg) return;
-
   appendMessage(`You: ${msg}`, 'self');
   socket.emit('chat', msg);
   messageInput.value = '';
 }
 
-// Receive chat message
 socket.on('chat', (msg) => {
   appendMessage(`Stranger: ${msg}`, 'partner');
 });
 
-// Append message to chat box
 function appendMessage(msg, sender) {
   const p = document.createElement('p');
   p.textContent = msg;
@@ -123,12 +125,11 @@ function appendMessage(msg, sender) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// Update status text
 function updateStatus(msg) {
   statusDiv.textContent = `🔌 ${msg}`;
 }
 
-// Mute/unmute audio
+// Mute/unmute
 muteBtn.addEventListener('click', () => {
   if (!localStream) return;
   isMuted = !isMuted;
@@ -150,7 +151,7 @@ videoBtn.addEventListener('click', () => {
   icon.classList.toggle('fa-video-slash');
 });
 
-// Disconnect button
+// Disconnect
 disconnectBtn.addEventListener('click', () => {
   if (peer) {
     peer.destroy();
@@ -161,7 +162,7 @@ disconnectBtn.addEventListener('click', () => {
   remoteVideo.srcObject = null;
 });
 
-// Report button
+// Report
 reportBtn.addEventListener('click', () => {
   if (confirm('Report this partner?')) {
     socket.emit('reportPartner');
