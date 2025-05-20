@@ -1,43 +1,84 @@
-const express = require("express");
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+
 const app = express();
-const http = require("http").Server(app);
-const io = require("socket.io")(http);
+const server = http.createServer(app);
+const io = new Server(server);
 
-app.use(express.static(__dirname));
+app.use(express.static('public')); // serve your front end files from /public
 
-let waitingSocket = null;
+const waitingUsers = [];
 
-io.on("connection", socket => {
-  if (waitingSocket) {
-    socket.partner = waitingSocket;
-    waitingSocket.partner = socket;
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
 
-    waitingSocket.emit("ready");
-    socket.emit("ready");
+  // Try to pair with waiting user or wait
+  if (waitingUsers.length > 0) {
+    const partnerId = waitingUsers.shift();
+    socket.partnerId = partnerId;
+    io.to(partnerId).emit('partnerFound', socket.id);
+    socket.emit('partnerFound', partnerId);
 
-    waitingSocket = null;
+    io.to(partnerId).emit('status', 'Partner connected');
+    socket.emit('status', 'Partner connected');
   } else {
-    waitingSocket = socket;
+    waitingUsers.push(socket.id);
+    socket.emit('status', 'Waiting for a stranger...');
   }
 
-  socket.on("offer", data => {
-    if (socket.partner) socket.partner.emit("offer", data);
+  // Relay signaling data
+  socket.on('signal', (data) => {
+    if (socket.partnerId) {
+      io.to(socket.partnerId).emit('signal', { from: socket.id, data: data });
+    }
   });
 
-  socket.on("answer", data => {
-    if (socket.partner) socket.partner.emit("answer", data);
+  // Chat messages relay
+  socket.on('chat', (msg) => {
+    if (socket.partnerId) {
+      io.to(socket.partnerId).emit('chat', msg);
+    }
   });
 
-  socket.on("chat", msg => {
-    if (socket.partner) socket.partner.emit("chat", msg);
+  // Disconnect handling
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+    if (socket.partnerId) {
+      io.to(socket.partnerId).emit('status', 'Partner disconnected');
+      io.to(socket.partnerId).emit('partnerDisconnected');
+      const partnerSocket = io.sockets.sockets.get(socket.partnerId);
+      if (partnerSocket) partnerSocket.partnerId = null;
+    } else {
+      // Remove from waiting queue if still waiting
+      const index = waitingUsers.indexOf(socket.id);
+      if (index !== -1) waitingUsers.splice(index, 1);
+    }
   });
 
-  socket.on("disconnect", () => {
-    if (socket.partner) socket.partner.partner = null;
-    if (waitingSocket === socket) waitingSocket = null;
+  // Manual disconnect by user
+  socket.on('disconnectPartner', () => {
+    if (socket.partnerId) {
+      io.to(socket.partnerId).emit('status', 'Partner disconnected');
+      io.to(socket.partnerId).emit('partnerDisconnected');
+      const partnerSocket = io.sockets.sockets.get(socket.partnerId);
+      if (partnerSocket) partnerSocket.partnerId = null;
+      socket.partnerId = null;
+      socket.emit('status', 'Disconnected. Waiting for a stranger...');
+      waitingUsers.push(socket.id);
+    }
+  });
+
+  // Report button - just forwards event (you can add handling)
+  socket.on('reportPartner', () => {
+    if (socket.partnerId) {
+      io.to(socket.partnerId).emit('reported');
+      socket.emit('reportAcknowledged');
+    }
   });
 });
 
-http.listen(3000, () => {
-  console.log("Server running on http://localhost:3000");
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });

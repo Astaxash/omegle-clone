@@ -1,41 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Chat with Stranger</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <title>connect.io</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 </head>
 <body>
-  <header>
-    <h1>Chat with Stranger</h1>
-  </header>
+  <div class="container">
+    <header>
+      <h1>Neodium connect.io</h1>
+    </header>
 
-  <main>
-    <div class="video-container">
-      <video id="myVideo" autoplay muted></video>
-      <video id="partnerVideo" autoplay></video>
-    </div>
+    <main>
+      <div class="video-section">
+        <div id="status">🔌 Connecting to a stranger...</div>
+        <div class="video-box">
+          <video id="localVideo" autoplay playsinline muted></video>
+        
+        </div>
+        <div class="video-box">
+          <video id="remoteVideo" autoplay playsinline></video>
+      
+        </div>
+      </div>
 
-    <div class="controls">
-      <button id="muteBtn">Mute</button>
-      <button id="videoBtn">Video Off</button>
-      <button id="shareScreenBtn">Share Screen</button>
-    </div>
+      <div class="chat-section">
+        <div id="chat" class="chat-box"></div>
+        <div class="input-area">
+          <input id="messageInput" placeholder="Type your message..." />
+          <button id="sendBtn"><i class="fas fa-paper-plane"></i></button>
+        </div>
 
-    <div class="chat-container">
-      <div id="messages"></div>
-      <input type="text" id="chatInput" placeholder="Type a message..." />
-      <button id="sendBtn">Send</button>
-    </div>
-  </main>
+        <div class="controls">
+          <button id="muteBtn" class="circle-btn" title="Mute/Unmute">
+            <i class="fas fa-microphone"></i>
+          </button>
+          <button id="videoBtn" class="circle-btn" title="Video On/Off">
+            <i class="fas fa-video"></i>
+          </button>
+          <button id="disconnectBtn" class="circle-btn" title="Disconnect">
+            <i class="fas fa-xmark"></i>
+          </button>
+          <button id="reportBtn" class="circle-btn" title="Report">
+            <i class="fas fa-triangle-exclamation"></i>
+          </button>
+        </div>
+      </div>
+    </main>
 
-  <footer>
-    <p>© 2025 Chat with Stranger - All rights reserved.</p>
-  </footer>
+    <footer>
+      <p>© 2025 Neodium connect.io - all rights reserved</p>
+    </footer>
+  </div>
 
-  <audio id="notificationSound" src="https://notificationsounds.com/storage/sounds/file-sounds-1150-pristine.mp3" preload="auto"></audio>
   <script src="/socket.io/socket.io.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.1/simplepeer.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/simple-peer/simplepeer.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
