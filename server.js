@@ -14,18 +14,24 @@ io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
   // Try to pair with waiting user or wait
+  socket.on('ready', () => {
   if (waitingUsers.length > 0) {
     const partnerId = waitingUsers.shift();
     socket.partnerId = partnerId;
-    io.to(partnerId).emit('partnerFound', socket.id);
-    socket.emit('partnerFound', partnerId);
+    const partnerSocket = io.sockets.sockets.get(partnerId);
+    if (partnerSocket) partnerSocket.partnerId = socket.id;
 
-    io.to(partnerId).emit('status', 'Partner connected');
+    socket.emit('partnerFound', partnerId);
+    io.to(partnerId).emit('partnerFound', socket.id);
+
     socket.emit('status', 'Partner connected');
+    io.to(partnerId).emit('status', 'Partner connected');
   } else {
     waitingUsers.push(socket.id);
     socket.emit('status', 'Waiting for a stranger...');
   }
+});
+
 
   // Relay signaling data
   socket.on('signal', (data) => {
