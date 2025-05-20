@@ -1,111 +1,142 @@
-const socket = io("https://stranger-chat-gv7k.onrender.com");
+const socket = io("https://stranger-chat-gv7k.onrender.com"); 
 let localStream;
 let peer;
-let isInitiator = false;
 
-// Step 1: Get camera & mic
+const localVideo = document.getElementById('localVideo');
+const remoteVideo = document.getElementById('remoteVideo');
+const status = document.getElementById('status');
+const chat = document.getElementById('chat');
+const messageInput = document.getElementById('messageInput');
+const sendBtn = document.getElementById('sendBtn');
+const disconnectBtn = document.getElementById('disconnectBtn');
+const reportBtn = document.getElementById('reportBtn');
+
+const muteBtn = document.getElementById('muteBtn');
+const videoBtn = document.getElementById('videoBtn');
+
+let isMuted = false;
+let isVideoOff = false;
+
+// Get media and connect to socket
 navigator.mediaDevices.getUserMedia({ video: true, audio: true })
   .then(stream => {
     localStream = stream;
-
-    const localVideo = document.getElementById('localVideo');
     localVideo.srcObject = stream;
-
     socket.emit('ready');
-
-    socket.on('initiate', () => {
-      isInitiator = true;
-      initPeer();
-    });
-
-    socket.on('signal', data => {
-      if (peer) peer.signal(data);
-    });
   })
   .catch(err => {
-    console.error('Media error:', err);
-    alert("Please allow camera and microphone access.");
+    alert('Error accessing camera or mic: ' + err);
   });
 
-// Step 2: Peer setup
-function initPeer() {
+// Create peer and connect
+socket.on('initiate', () => {
   peer = new SimplePeer({
-    initiator: isInitiator,
+    initiator: true,
     trickle: false,
-    stream: localStream,
-    config: {
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-    }
+    stream: localStream
   });
 
-  peer.on('signal', data => {
-    socket.emit('signal', data);
-  });
+  setupPeerEvents(peer);
+});
 
-  peer.on('stream', stream => {
-    const remoteVideo = document.getElementById('remoteVideo');
-    remoteVideo.srcObject = stream;
-    document.getElementById('status').innerText = 'Partner connected';
-  });
-
-  peer.on('error', err => {
-    console.error('Peer error:', err);
-  });
-
-  peer.on('close', () => {
-    document.getElementById('status').innerText = 'Partner disconnected';
-  });
-}
-
-// Step 3: Chat
-const chatBox = document.getElementById('chat');
-const msgInput = document.getElementById('messageInput');
-
-document.getElementById('sendBtn').onclick = () => {
-  const msg = msgInput.value;
-  if (msg && peer) {
-    peer.send(msg);
-    appendChat('You', msg);
-    msgInput.value = '';
+socket.on('signal', data => {
+  if (!peer) {
+    peer = new SimplePeer({
+      initiator: false,
+      trickle: false,
+      stream: localStream
+    });
+    setupPeerEvents(peer);
   }
-};
+  peer.signal(data);
+});
 
-function appendChat(sender, text) {
-  const msg = document.createElement('p');
-  msg.innerHTML = `<strong>${sender}:</strong> ${text}`;
-  chatBox.appendChild(msg);
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
-
-// Receive chat
-function bindPeerData() {
-  if (!peer) return;
-  peer.on('data', data => {
-    appendChat('Stranger', data.toString());
-  });
-}
-setInterval(bindPeerData, 1000); // Ensure it binds after peer created
-
-// Step 4: Controls
-const micBtn = document.getElementById('micBtn');
-const videoBtn = document.getElementById('videoBtn');
-
-micBtn.onclick = () => {
-  const track = localStream.getAudioTracks()[0];
-  track.enabled = !track.enabled;
-  micBtn.innerHTML = track.enabled ? '🎤' : '🎤❌';
-};
-
-videoBtn.onclick = () => {
-  const track = localStream.getVideoTracks()[0];
-  track.enabled = !track.enabled;
-  videoBtn.innerHTML = track.enabled ? '📷' : '📷❌';
-};
-
-document.getElementById('disconnectBtn').onclick = () => {
+socket.on('disconnect', () => {
+  status.innerText = "Stranger disconnected";
   if (peer) {
     peer.destroy();
     peer = null;
-    document.getElementById('status').innerText = 'Disconnected';
   }
+  remoteVideo.srcObject = null;
+});
+
+// Peer event handlers
+function setupPeerEvents(p) {
+  p.on('signal', data => {
+    socket.emit('signal', data);
+  });
+
+  p.on('stream', stream => {
+    remoteVideo.srcObject = stream;
+    status.innerText = "Stranger connected";
+  });
+
+  p.on('close', () => {
+    status.innerText = "Connection closed";
+    remoteVideo.srcObject = null;
+    peer = null;
+  });
+}
+
+// Send message
+sendBtn.onclick = () => {
+  const message = messageInput.value.trim();
+  if (message && peer) {
+    appendMessage(`You: ${message}`);
+    peer.send(JSON.stringify({ type: 'chat', message }));
+    messageInput.value = '';
+  }
+};
+
+// Receive messages
+if (!SimplePeer.WEBRTC_SUPPORT) {
+  alert("Your browser does not support WebRTC");
+}
+
+function appendMessage(msg) {
+  const div = document.createElement('div');
+  div.textContent = msg;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+if (peer) {
+  peer.on('data', data => {
+    try {
+      const parsed = JSON.parse(data);
+      if (parsed.type === 'chat') {
+        appendMessage(`Stranger: ${parsed.message}`);
+      }
+    } catch (e) {
+      console.error('Invalid data received:', data);
+    }
+  });
+}
+
+// Controls
+muteBtn.onclick = () => {
+  isMuted = !isMuted;
+  localStream.getAudioTracks()[0].enabled = !isMuted;
+  muteBtn.innerHTML = isMuted ? '🎙️❌' : '🎙️';
+};
+
+videoBtn.onclick = () => {
+  isVideoOff = !isVideoOff;
+  localStream.getVideoTracks()[0].enabled = !isVideoOff;
+  videoBtn.innerHTML = isVideoOff ? '📷❌' : '📷';
+};
+
+disconnectBtn.onclick = () => {
+  if (peer) {
+    peer.destroy();
+    peer = null;
+    socket.emit('ready'); // Rejoin queue
+    status.innerText = "Disconnected. Searching again...";
+    remoteVideo.srcObject = null;
+  }
+};
+
+reportBtn.onclick = () => {
+  alert('Reported user. Disconnecting...');
+  disconnectBtn.click(); // Simulate disconnect
 };
