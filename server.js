@@ -1,47 +1,64 @@
 const express = require('express');
 const app = express();
-const server = require('http').createServer(app);
-const io = require('socket.io')(server);
+const http = require('http');
+const server = http.createServer(app);
+const { Server } = require('socket.io');
+const io = new Server(server, {
+  cors: {
+    origin: "*", // For testing. Replace with your frontend URL in production.
+    methods: ["GET", "POST"]
+  }
+});
 
 app.use(express.static('public'));
 
-let waitingUser = null;
+let waitingUsers = [];
 
 io.on('connection', socket => {
-  console.log('A user connected:', socket.id);
+  console.log('User connected:', socket.id);
 
+  // When user is ready to find a partner
   socket.on('ready', () => {
-    if (waitingUser) {
-      socket.partner = waitingUser;
-      waitingUser.partner = socket;
+    // If there’s someone waiting, match them
+    if (waitingUsers.length > 0) {
+      const randomIndex = Math.floor(Math.random() * waitingUsers.length);
+      const partner = waitingUsers.splice(randomIndex, 1)[0];
 
-      waitingUser.emit('initiate');
+      // Pair them
+      socket.partner = partner;
+      partner.partner = socket;
+
       socket.emit('initiate');
-
-      waitingUser = null;
+      partner.emit('initiate');
     } else {
-      waitingUser = socket;
+      // No one waiting, add this user to queue
+      waitingUsers.push(socket);
     }
   });
 
+  // When a signal is received (SDP offer/answer/ICE)
   socket.on('signal', data => {
     if (socket.partner) {
       socket.partner.emit('signal', data);
     }
   });
 
+  // Handle disconnection
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
+
+    // Remove from waiting list if still waiting
+    waitingUsers = waitingUsers.filter(s => s.id !== socket.id);
+
+    // Notify partner if exists
     if (socket.partner) {
-      socket.partner.partner = null;
       socket.partner.emit('disconnect');
-    }
-    if (waitingUser === socket) {
-      waitingUser = null;
+      socket.partner.partner = null;
     }
   });
 });
 
-server.listen(3000, () => {
-  console.log('Server listening on http://localhost:3000');
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });

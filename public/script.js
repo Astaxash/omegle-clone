@@ -1,33 +1,34 @@
-const socket = io();
+const socket = io("https://stranger-chat-gv7k.onrender.com");
 let localStream;
 let peer;
 let isInitiator = false;
 
-// Get media
+// Step 1: Get camera & mic
 navigator.mediaDevices.getUserMedia({ video: true, audio: true })
   .then(stream => {
     localStream = stream;
-    document.getElementById('localVideo').srcObject = stream;
+
+    const localVideo = document.getElementById('localVideo');
+    localVideo.srcObject = stream;
 
     socket.emit('ready');
 
     socket.on('initiate', () => {
       isInitiator = true;
-      startPeer();
+      initPeer();
     });
 
     socket.on('signal', data => {
-      if (peer) {
-        peer.signal(data);
-      }
+      if (peer) peer.signal(data);
     });
   })
   .catch(err => {
     console.error('Media error:', err);
-    alert('Could not access camera/mic. Please allow permissions.');
+    alert("Please allow camera and microphone access.");
   });
 
-function startPeer() {
+// Step 2: Peer setup
+function initPeer() {
   peer = new SimplePeer({
     initiator: isInitiator,
     trickle: false,
@@ -42,58 +43,69 @@ function startPeer() {
   });
 
   peer.on('stream', stream => {
-    document.getElementById('remoteVideo').srcObject = stream;
-    document.getElementById('status').innerText = "Stranger connected";
+    const remoteVideo = document.getElementById('remoteVideo');
+    remoteVideo.srcObject = stream;
+    document.getElementById('status').innerText = 'Partner connected';
+  });
+
+  peer.on('error', err => {
+    console.error('Peer error:', err);
   });
 
   peer.on('close', () => {
-    document.getElementById('status').innerText = "Stranger disconnected";
+    document.getElementById('status').innerText = 'Partner disconnected';
   });
-
-  peer.on('error', err => console.error('Peer error:', err));
 }
 
-// Chat send
+// Step 3: Chat
+const chatBox = document.getElementById('chat');
+const msgInput = document.getElementById('messageInput');
+
 document.getElementById('sendBtn').onclick = () => {
-  const msg = document.getElementById('messageInput').value;
+  const msg = msgInput.value;
   if (msg && peer) {
     peer.send(msg);
     appendChat('You', msg);
-    document.getElementById('messageInput').value = '';
+    msgInput.value = '';
   }
 };
 
-// Chat receive
-if (!peer) return;
-peer.on('data', data => {
-  appendChat('Stranger', data.toString());
-});
-
-function appendChat(sender, message) {
-  const chatBox = document.getElementById('chat');
-  chatBox.innerHTML += `<p><strong>${sender}:</strong> ${message}</p>`;
+function appendChat(sender, text) {
+  const msg = document.createElement('p');
+  msg.innerHTML = `<strong>${sender}:</strong> ${text}`;
+  chatBox.appendChild(msg);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// Mic toggle
-document.getElementById('micBtn').onclick = () => {
-  const enabled = localStream.getAudioTracks()[0].enabled;
-  localStream.getAudioTracks()[0].enabled = !enabled;
-  document.getElementById('micBtn').innerHTML = enabled ? '🎤🔇' : '🎤';
+// Receive chat
+function bindPeerData() {
+  if (!peer) return;
+  peer.on('data', data => {
+    appendChat('Stranger', data.toString());
+  });
+}
+setInterval(bindPeerData, 1000); // Ensure it binds after peer created
+
+// Step 4: Controls
+const micBtn = document.getElementById('micBtn');
+const videoBtn = document.getElementById('videoBtn');
+
+micBtn.onclick = () => {
+  const track = localStream.getAudioTracks()[0];
+  track.enabled = !track.enabled;
+  micBtn.innerHTML = track.enabled ? '🎤' : '🎤❌';
 };
 
-// Video toggle
-document.getElementById('videoBtn').onclick = () => {
-  const enabled = localStream.getVideoTracks()[0].enabled;
-  localStream.getVideoTracks()[0].enabled = !enabled;
-  document.getElementById('videoBtn').innerHTML = enabled ? '📷🚫' : '📷';
+videoBtn.onclick = () => {
+  const track = localStream.getVideoTracks()[0];
+  track.enabled = !track.enabled;
+  videoBtn.innerHTML = track.enabled ? '📷' : '📷❌';
 };
 
-// Disconnect
 document.getElementById('disconnectBtn').onclick = () => {
   if (peer) {
     peer.destroy();
     peer = null;
-    document.getElementById('status').innerText = "Disconnected";
+    document.getElementById('status').innerText = 'Disconnected';
   }
 };
