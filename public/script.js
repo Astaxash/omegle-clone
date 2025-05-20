@@ -1,5 +1,5 @@
 // Replace with your actual Render backend URL
-const socket = io('https://YOUR_BACKEND_URL_HERE');
+const socket = io('https://stranger-chat-gv7k.onrender.com');
 
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
@@ -128,6 +128,12 @@ function appendMessage(msg, sender) {
 function updateStatus(msg) {
   statusDiv.textContent = `🔌 ${msg}`;
 }
+
+// Active users update
+socket.on('activeUsers', count => {
+  activeUsersDiv.textContent = `👥 Active Users: ${count}`;
+});
+
 
 // Mute/unmute
 muteBtn.addEventListener('click', () => {
